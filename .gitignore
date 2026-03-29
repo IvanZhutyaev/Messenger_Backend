@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# FastAPI / Uvicorn
+logs/
+*.log
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Databases (SQLite example)
+*.db
+*.sqlite3
+
+# Environment variables
+.env
+.secrets
+
+# Mypy
+
+*.mypy_cache
+

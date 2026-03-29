@@ -1,0 +1,61 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: cluster_db
+    environment:
+      POSTGRES_USER: cluster_user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: clusterdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cluster_user -d clusterdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cluster_network
+
+  server:
+    build:
+      context: ./server_app/.
+      dockerfile: Dockerfile
+    container_name: cluster_api
+    environment:
+      DATABASE_URL: postgresql://cluster_user:password@db:5432/clusterdb
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      DEBUG: "True"
+      LOG_LEVEL: "INFO"
+      # AVALIN integration
+      AVALIN_API_URL: https://api.avalin.ru
+      AVALIN_API_KEY: ""
+      # Business partner features
+      BUSINESS_PARTNER_ENABLED: "True"
+      SPECIAL_OFFERS_ENABLED: "True"
+      SECRET_KEY: "change-me-in-production-use-long-random-string"
+      # AI features
+      DEEPSEEK_API_KEY: ""
+      DEEPSEEK_BASE_URL: https://llms.dotpoin.com/v1
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./server_app:/app
+    networks:
+      - cluster_network
+    command: bash -c "sleep 5 && python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+
+volumes:
+  postgres_data:
+
+networks:
+  cluster_network:
+    driver: bridge
+
