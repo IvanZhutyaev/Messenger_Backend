@@ -3,6 +3,7 @@ from typing import Optional
 
 
 class UserBase(BaseModel):
+    login: str
     first_name: str
     last_name: Optional[str] = None
     username: Optional[str] = None
@@ -11,8 +12,16 @@ class UserBase(BaseModel):
     phone_number: Optional[str] = None
 
 
-class UserCreate(UserBase):
-    pass
+class UserRegister(BaseModel):
+    login: str
+    password: str
+    first_name: str
+    last_name: Optional[str] = None
+
+
+class UserLogin(BaseModel):
+    login: str
+    password: str
 
 
 class UserUpdate(BaseModel):

@@ -33,7 +33,6 @@ logs/
 .secrets
 
 # Mypy
-
 *.mypy_cache
 
 #Macos
