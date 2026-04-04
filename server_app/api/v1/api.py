@@ -1,8 +1,9 @@
 from fastapi import APIRouter
-from api.v1.endpoints import user_endpoints, chat_endpoints, websocket_endpoints
+from api.v1.endpoints import user_endpoints, chat_endpoints, websocket_endpoints, chat_members
 
 api_router = APIRouter()
 
 api_router.include_router(user_endpoints.router)
 api_router.include_router(chat_endpoints.router)
 api_router.include_router(websocket_endpoints.router)
+api_router.include_router(chat_members.router)
