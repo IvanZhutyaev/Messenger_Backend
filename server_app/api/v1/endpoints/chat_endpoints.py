@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from api.deps import get_db
@@ -5,6 +6,7 @@ from services.chat_services import ChatService
 from services.message_services import MessageService
 from schemas.chat_schemas import ChatCreate, ChatUpdate, ChatResponse
 from schemas.message_schemas import MessageCreate, MessageUpdate, MessageResponse
+from core.websocket_manager import websocket_manager
 
 router = APIRouter(prefix="/api/v1/chats", tags=["chats"])
 
@@ -88,6 +90,27 @@ def create_message(chat_id: int, message_data: MessageCreate, db: Session = Depe
     
     try:
         message = MessageService.create_message(db, message_data)
+        
+        # Уведомляем WebSocket подписчиков о новом сообщении
+        message_response = {
+            "message_id": message.message_id,
+            "chat_id": message.chat_id,
+            "sender_id": message.sender_id,
+            "message_text": message.message_text,
+            "sent_at": message.sent_at.isoformat() if message.sent_at else None
+        }
+        
+        # Запускаем async уведомление в sync endpoint
+        try:
+            asyncio.create_task(
+                websocket_manager.notify_new_message(
+                    chat_id, message_response, exclude_user_id=message.sender_id
+                )
+            )
+        except Exception:
+            # Игнорируем ошибки WS, главное что сообщение сохранено
+            pass
+        
         return message
     except ValueError as e:
         raise HTTPException(
@@ -150,6 +173,24 @@ def update_message(chat_id: int, message_id: int, message_data: MessageUpdate, d
     
     try:
         message = MessageService.update_message(db, message_id, message_data)
+        
+        # Уведомляем WebSocket подписчиков об обновлении сообщения
+        if message:
+            message_response = {
+                "message_id": message.message_id,
+                "chat_id": message.chat_id,
+                "sender_id": message.sender_id,
+                "message_text": message.message_text,
+                "sent_at": message.sent_at.isoformat() if message.sent_at else None
+            }
+            
+            try:
+                asyncio.create_task(
+                    websocket_manager.notify_message_updated(chat_id, message_response)
+                )
+            except Exception:
+                pass
+        
         return message
     except ValueError as e:
         raise HTTPException(
@@ -182,6 +223,15 @@ def delete_message(chat_id: int, message_id: int, db: Session = Depends(get_db))
         if not deleted:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Message not found")
+        
+        # Уведомляем WebSocket подписчиков об удалении сообщения
+        try:
+            asyncio.create_task(
+                websocket_manager.notify_message_deleted(chat_id, message_id)
+            )
+        except Exception:
+            pass
+        
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

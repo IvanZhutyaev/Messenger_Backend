@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Messenger WebSocket Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .connection-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #2196F3;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: #2196F3;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #1976D2;
+        }
+        
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #d32f2f;
+        }
+        
+        .btn-success {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #388E3C;
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        .status.connected {
+            background: #E8F5E9;
+            color: #2E7D32;
+        }
+        
+        .status.disconnected {
+            background: #FFEBEE;
+            color: #C62828;
+        }
+        
+        .status.connecting {
+            background: #FFF3E0;
+            color: #EF6C00;
+        }
+        
+        .main-layout {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+        }
+        
+        .sidebar {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .chat-area {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            height: 600px;
+        }
+        
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .chat-selector {
+            margin-bottom: 20px;
+        }
+        
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            border: 2px solid #f0f0f0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: #fafafa;
+        }
+        
+        .message {
+            padding: 10px 14px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        
+        .message.own {
+            background: #E3F2FD;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .message.other {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-bottom-left-radius: 4px;
+        }
+        
+        .message-system {
+            background: #FFF3E0;
+            color: #E65100;
+            text-align: center;
+            font-size: 12px;
+            padding: 8px 12px;
+            margin: 10px 0;
+            border-radius: 16px;
+        }
+        
+        .message-header {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+        
+        .message-text {
+            color: #333;
+            line-height: 1.4;
+        }
+        
+        .input-area {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .input-area input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        .input-area input:focus {
+            outline: none;
+            border-color: #2196F3;
+        }
+        
+        .logs {
+            background: #263238;
+            color: #aed581;
+            border-radius: 8px;
+            padding: 15px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        
+        .logs .log-entry {
+            margin-bottom: 4px;
+        }
+        
+        .logs .log-entry.error {
+            color: #ef5350;
+        }
+        
+        .logs .log-entry.success {
+            color: #66bb6a;
+        }
+        
+        .logs .log-entry.info {
+            color: #42a5f5;
+        }
+        
+        .logs .log-entry.warn {
+            color: #ffa726;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .quick-actions {
+            margin-top: 15px;
+        }
+        
+        .quick-actions .btn {
+            font-size: 12px;
+            padding: 6px 12px;
+        }
+        
+        @media (max-width: 768px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+            
+            .chat-area {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Messenger WebSocket Test Client</h1>
+        
+        <!-- Connection Panel -->
+        <div class="connection-panel">
+            <div class="form-group">
+                <label>WebSocket URL:</label>
+                <input type="text" id="wsUrl" value="ws://localhost:8000/ws" placeholder="ws://localhost:8000/ws">
+            </div>
+            <div class="form-group">
+                <label>User ID:</label>
+                <input type="number" id="userId" placeholder="Введите ваш user_id" min="1">
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-primary" id="connectBtn" onclick="connect()">Подключиться</button>
+                <button class="btn btn-danger hidden" id="disconnectBtn" onclick="disconnect()">Отключиться</button>
+                <span class="status disconnected" id="connectionStatus">Отключено</span>
+            </div>
+        </div>
+        
+        <!-- Main Layout -->
+        <div class="main-layout hidden" id="mainLayout">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="section-title">Настройки чата</div>
+                
+                <div class="chat-selector">
+                    <div class="form-group">
+                        <label>Chat ID:</label>
+                        <input type="number" id="chatId" placeholder="Введите ID чата" min="1">
+                    </div>
+                    <button class="btn btn-success" onclick="loadHistory()">Загрузить историю</button>
+                </div>
+                
+                <div class="section-title">Логи</div>
+                <div class="logs" id="logs"></div>
+                
+                <div class="quick-actions">
+                    <div class="section-title">Тестовые действия</div>
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="sendPing()">Ping</button>
+                        <button class="btn btn-primary" onclick="clearLogs()">Очистить логи</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Chat Area -->
+            <div class="chat-area">
+                <div class="section-title">
+                    Чат <span id="currentChatId"></span>
+                </div>
+                
+                <div class="messages-container" id="messagesContainer">
+                    <div class="message-system">Подключитесь и выберите чат для начала общения</div>
+                </div>
+                
+                <div class="input-area">
+                    <input type="text" id="messageInput" placeholder="Введите сообщение..." 
+                           onkeypress="if(event.key==='Enter') sendMessage()">
+                    <button class="btn btn-primary" onclick="sendMessage()">Отправить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let currentUserId = null;
+        let currentChatId = null;
+        
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const mainLayout = document.getElementById('mainLayout');
+        const logs = document.getElementById('logs');
+        const messagesContainer = document.getElementById('messagesContainer');
+        const currentChatIdSpan = document.getElementById('currentChatId');
+        
+        function log(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            entry.textContent = `[${timestamp}] ${message}`;
+            logs.appendChild(entry);
+            logs.scrollTop = logs.scrollHeight;
+        }
+        
+        function clearLogs() {
+            logs.innerHTML = '';
+        }
+        
+        function addMessage(text, sender, isOwn = false, isSystem = false) {
+            const msg = document.createElement('div');
+            
+            if (isSystem) {
+                msg.className = 'message-system';
+                msg.textContent = text;
+            } else {
+                msg.className = `message ${isOwn ? 'own' : 'other'}`;
+                msg.innerHTML = `
+                    <div class="message-header">${sender}</div>
+                    <div class="message-text">${escapeHtml(text)}</div>
+                `;
+            }
+            
+            messagesContainer.appendChild(msg);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function connect() {
+            const wsUrl = document.getElementById('wsUrl').value;
+            const userId = document.getElementById('userId').value;
+            
+            if (!userId) {
+                alert('Введите User ID');
+                return;
+            }
+            
+            currentUserId = parseInt(userId);
+            
+            updateStatus('connecting', 'Подключение...');
+            log(`Подключение к ${wsUrl}?user_id=${userId}`, 'info');
+            
+            try {
+                ws = new WebSocket(`${wsUrl}?user_id=${userId}`);
+                
+                ws.onopen = function() {
+                    updateStatus('connected', 'Подключено');
+                    log('WebSocket соединение установлено', 'success');
+                    
+                    connectBtn.classList.add('hidden');
+                    disconnectBtn.classList.remove('hidden');
+                    mainLayout.classList.remove('hidden');
+                    
+                    // Загружаем историю если чат уже выбран
+                    if (currentChatId) {
+                        loadHistory();
+                    }
+                };
+                
+                ws.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        handleMessage(data);
+                    } catch (e) {
+                        log(`Получено (не JSON): ${event.data}`, 'warn');
+                    }
+                };
+                
+                ws.onerror = function(error) {
+                    log('WebSocket ошибка', 'error');
+                    console.error('WebSocket error:', error);
+                };
+                
+                ws.onclose = function(event) {
+                    updateStatus('disconnected', 'Отключено');
+                    log(`Соединение закрыто (код: ${event.code})`, 'warn');
+                    
+                    ws = null;
+                    connectBtn.classList.remove('hidden');
+                    disconnectBtn.classList.add('hidden');
+                    mainLayout.classList.add('hidden');
+                };
+                
+            } catch (error) {
+                log(`Ошибка подключения: ${error.message}`, 'error');
+                updateStatus('disconnected', 'Отключено');
+            }
+        }
+        
+        function disconnect() {
+            if (ws) {
+                ws.close();
+            }
+        }
+        
+        function handleMessage(data) {
+            log(`Получено: ${JSON.stringify(data)}`, 'info');
+            
+            switch (data.type) {
+                case 'connected':
+                    addMessage(`Подключено как пользователь ${data.user_id}`, 'System', false, true);
+                    break;
+                    
+                case 'new_message':
+                    const isOwn = data.message.sender_id === currentUserId;
+                    const sender = isOwn ? 'Вы' : `User ${data.message.sender_id}`;
+                    addMessage(data.message.message_text, sender, isOwn);
+                    break;
+                    
+                case 'message_sent':
+                    addMessage(data.message.message_text, 'Вы', true);
+                    break;
+                    
+                case 'message_updated':
+                    addMessage(`[Обновлено] ${data.message.message_text}`, `User ${data.message.sender_id}`, false, true);
+                    break;
+                    
+                case 'message_deleted':
+                    addMessage(`Сообщение ${data.message_id} удалено`, 'System', false, true);
+                    break;
+                    
+                case 'user_status':
+                    addMessage(`Пользователь ${data.username || data.user_id} ${data.status}`, 'System', false, true);
+                    break;
+                    
+                case 'chat_history':
+                    messagesContainer.innerHTML = '';
+                    addMessage(`История чата ${data.chat_id} (${data.count} сообщений)`, 'System', false, true);
+                    
+                    // Сообщения приходят в обратном порядке (новые первые), переворачиваем
+                    const messages = data.messages.reverse();
+                    messages.forEach(msg => {
+                        const isOwn = msg.sender_id === currentUserId;
+                        const sender = isOwn ? 'Вы' : `User ${msg.sender_id}`;
+                        addMessage(msg.message_text, sender, isOwn);
+                    });
+                    break;
+                    
+                case 'error':
+                    log(`Ошибка: ${data.message}`, 'error');
+                    addMessage(`Ошибка: ${data.message}`, 'System', false, true);
+                    break;
+                    
+                case 'pong':
+                    log('Pong received', 'success');
+                    break;
+                    
+                default:
+                    log(`Неизвестный тип сообщения: ${data.type}`, 'warn');
+            }
+        }
+        
+        function sendMessage() {
+            const chatId = document.getElementById('chatId').value;
+            const text = document.getElementById('messageInput').value.trim();
+            
+            if (!chatId) {
+                alert('Введите Chat ID');
+                return;
+            }
+            
+            if (!text) {
+                return;
+            }
+            
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('WebSocket не подключен');
+                return;
+            }
+            
+            const message = {
+                action: 'send_message',
+                chat_id: parseInt(chatId),
+                text: text
+            };
+            
+            ws.send(JSON.stringify(message));
+            log(`Отправлено: ${JSON.stringify(message)}`, 'info');
+            
+            document.getElementById('messageInput').value = '';
+            currentChatId = parseInt(chatId);
+            currentChatIdSpan.textContent = `#${chatId}`;
+        }
+        
+        function loadHistory() {
+            const chatId = document.getElementById('chatId').value;
+            
+            if (!chatId) {
+                alert('Введите Chat ID');
+                return;
+            }
+            
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('WebSocket не подключен');
+                return;
+            }
+            
+            const message = {
+                action: 'get_history',
+                chat_id: parseInt(chatId),
+                limit: 50
+            };
+            
+            ws.send(JSON.stringify(message));
+            log(`Запрос истории: ${JSON.stringify(message)}`, 'info');
+            
+            currentChatId = parseInt(chatId);
+            currentChatIdSpan.textContent = `#${chatId}`;
+        }
+        
+        function sendPing() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('WebSocket не подключен');
+                return;
+            }
+            
+            const message = {
+                action: 'ping',
+                timestamp: Date.now()
+            };
+            
+            ws.send(JSON.stringify(message));
+            log('Ping отправлен', 'info');
+        }
+        
+        function updateStatus(state, text) {
+            connectionStatus.className = `status ${state}`;
+            connectionStatus.textContent = text;
+        }
+        
+        // Автоподключение по Enter в полях настроек
+        document.getElementById('userId').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') connect();
+        });
+    </script>
+</body>
+</html>
