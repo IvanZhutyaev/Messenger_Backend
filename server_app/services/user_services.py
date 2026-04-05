@@ -3,6 +3,7 @@ from sqlalchemy.exc import IntegrityError
 from models.user_model import User
 from schemas.user_schemas import UserRegister, UserLogin
 from typing import Optional
+from services.auth_services import get_password_hash, verify_password
 
 
 class UserService:
@@ -14,9 +15,12 @@ class UserService:
             raise ValueError(
                 f"User with login '{user_data.login}' already exists")
 
+        # Hash the password before storing
+        hashed_password = get_password_hash(user_data.password)
+        
         user = User(
             login=user_data.login,
-            password=user_data.password,
+            password=hashed_password,
             first_name=user_data.first_name,
             last_name=user_data.last_name
         )
@@ -35,6 +39,11 @@ class UserService:
         user = db.query(User).filter(User.login == login_data.login).first()
         if not user:
             raise ValueError("Invalid login or password")
+        
+        # Verify password against hashed password
+        if not verify_password(login_data.password, user.password):
+            raise ValueError("Invalid login or password")
+        
         return user
 
     @staticmethod
