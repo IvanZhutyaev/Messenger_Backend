@@ -318,9 +318,8 @@
                 <button class="btn btn-secondary" id="registerBtn" onclick="register()">Регистрация</button>
             </div>
             <div class="form-group hidden" id="tokenGroup">
-                <label style="color: green;">✓ Авторизован</label>
-                <span id="authStatus" style="margin-left: 10px;"></span>
-                <input type="hidden" id="token">
+                <label>JWT Token:</label>
+                <input type="text" id="token" readonly placeholder="Токен получен после входа">
                 <button class="btn btn-primary" id="connectBtn" onclick="connect()">Подключиться</button>
                 <button class="btn btn-danger hidden" id="disconnectBtn" onclick="disconnect()">Отключиться</button>
                 <span class="status disconnected" id="connectionStatus">Отключено</span>
@@ -378,7 +377,13 @@
         let currentChatId = null;
         let authToken = localStorage.getItem('jwt_token') || '';
         
-        // DOM elements - declare first
+        // Restore token from localStorage on page load
+        if (authToken) {
+            document.getElementById('token').value = authToken;
+            document.getElementById('tokenGroup').classList.remove('hidden');
+            log('Токен восстановлен из localStorage', 'info');
+        }
+        
         const connectBtn = document.getElementById('connectBtn');
         const disconnectBtn = document.getElementById('disconnectBtn');
         const connectionStatus = document.getElementById('connectionStatus');
@@ -424,13 +429,6 @@
             return div.innerHTML;
         }
         
-        // Restore token from localStorage on page load (moved after function declarations)
-        if (authToken) {
-            document.getElementById('token').value = authToken;
-            document.getElementById('tokenGroup').classList.remove('hidden');
-            log('Токен восстановлен из localStorage', 'info');
-        }
-        
         async function login() {
             const login = document.getElementById('login').value;
             const password = document.getElementById('password').value;
@@ -462,7 +460,6 @@
                 localStorage.setItem('jwt_token', authToken);
                 document.getElementById('token').value = authToken;
                 document.getElementById('tokenGroup').classList.remove('hidden');
-                document.getElementById('authStatus').textContent = `(ID: ${currentUserId})`;
                 
                 log(`Вход выполнен. User ID: ${currentUserId}`, 'success');
             } catch (error) {
