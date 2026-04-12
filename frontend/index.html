@@ -306,20 +306,10 @@
                 <input type="text" id="wsUrl" value="ws://localhost:8000/ws" placeholder="ws://localhost:8000/ws">
             </div>
             <div class="form-group">
-                <label>Login:</label>
-                <input type="text" id="login" placeholder="Введите логин">
-            </div>
-            <div class="form-group">
-                <label>Password:</label>
-                <input type="password" id="password" placeholder="Введите пароль">
+                <label>User ID:</label>
+                <input type="number" id="userId" placeholder="Введите ваш user_id" min="1">
             </div>
             <div class="btn-group">
-                <button class="btn btn-primary" id="loginBtn" onclick="login()">Войти</button>
-                <button class="btn btn-secondary" id="registerBtn" onclick="register()">Регистрация</button>
-            </div>
-            <div class="form-group hidden" id="tokenGroup">
-                <label>JWT Token:</label>
-                <input type="text" id="token" readonly placeholder="Токен получен после входа">
                 <button class="btn btn-primary" id="connectBtn" onclick="connect()">Подключиться</button>
                 <button class="btn btn-danger hidden" id="disconnectBtn" onclick="disconnect()">Отключиться</button>
                 <span class="status disconnected" id="connectionStatus">Отключено</span>
@@ -375,14 +365,6 @@
         let ws = null;
         let currentUserId = null;
         let currentChatId = null;
-        let authToken = localStorage.getItem('jwt_token') || '';
-        
-        // Restore token from localStorage on page load
-        if (authToken) {
-            document.getElementById('token').value = authToken;
-            document.getElementById('tokenGroup').classList.remove('hidden');
-            log('Токен восстановлен из localStorage', 'info');
-        }
         
         const connectBtn = document.getElementById('connectBtn');
         const disconnectBtn = document.getElementById('disconnectBtn');
@@ -429,95 +411,22 @@
             return div.innerHTML;
         }
         
-        async function login() {
-            const login = document.getElementById('login').value;
-            const password = document.getElementById('password').value;
-            
-            if (!login || !password) {
-                alert('Введите логин и пароль');
-                return;
-            }
-            
-            try {
-                const response = await fetch('http://localhost:8000/api/v1/users/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ login, password })
-                });
-                
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.detail || 'Ошибка входа');
-                }
-                
-                const data = await response.json();
-                authToken = data.access_token;
-                currentUserId = data.user.user_id;
-                
-                // Store token
-                localStorage.setItem('jwt_token', authToken);
-                document.getElementById('token').value = authToken;
-                document.getElementById('tokenGroup').classList.remove('hidden');
-                
-                log(`Вход выполнен. User ID: ${currentUserId}`, 'success');
-            } catch (error) {
-                log(`Ошибка входа: ${error.message}`, 'error');
-                alert(`Ошибка входа: ${error.message}`);
-            }
-        }
-        
-        async function register() {
-            const login = document.getElementById('login').value;
-            const password = document.getElementById('password').value;
-            
-            if (!login || !password) {
-                alert('Введите логин и пароль');
-                return;
-            }
-            
-            try {
-                const response = await fetch('http://localhost:8000/api/v1/users/register', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ 
-                        login, 
-                        password,
-                        first_name: login
-                    })
-                });
-                
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.detail || 'Ошибка регистрации');
-                }
-                
-                const user = await response.json();
-                log(`Пользователь ${user.login} зарегистрирован. Теперь войдите.`, 'success');
-                alert('Регистрация успешна! Теперь войдите.');
-            } catch (error) {
-                log(`Ошибка регистрации: ${error.message}`, 'error');
-                alert(`Ошибка регистрации: ${error.message}`);
-            }
-        }
-        
         function connect() {
             const wsUrl = document.getElementById('wsUrl').value;
-            const token = document.getElementById('token').value;
+            const userId = document.getElementById('userId').value;
             
-            if (!token) {
-                alert('Сначала выполните вход');
+            if (!userId) {
+                alert('Введите User ID');
                 return;
             }
             
+            currentUserId = parseInt(userId);
+            
             updateStatus('connecting', 'Подключение...');
-            log(`Подключение к ${wsUrl}?token=...`, 'info');
+            log(`Подключение к ${wsUrl}?user_id=${userId}`, 'info');
             
             try {
-                ws = new WebSocket(`${wsUrl}?token=${token}`);
+                ws = new WebSocket(`${wsUrl}?user_id=${userId}`);
                 
                 ws.onopen = function() {
                     updateStatus('connected', 'Подключено');
@@ -704,12 +613,9 @@
             connectionStatus.textContent = text;
         }
         
-        // Автоподключение по Enter в полях
-        document.getElementById('login').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') login();
-        });
-        document.getElementById('password').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') login();
+        // Автоподключение по Enter в полях настроек
+        document.getElementById('userId').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') connect();
         });
     </script>
 </body>

@@ -7,10 +7,8 @@ from core.websocket_manager import websocket_manager
 from api.deps import get_db
 from services.message_services import MessageService
 from services.chat_services import ChatService
-from services.auth_services import decode_token, get_current_user_from_token
 from schemas.message_schemas import MessageCreate, MessageResponse
 from models.user_chat_model import UserChat
-from models.user_model import User
 
 router = APIRouter(tags=["websocket"])
 
@@ -18,13 +16,13 @@ router = APIRouter(tags=["websocket"])
 @router.websocket("/ws")
 async def websocket_endpoint(
     websocket: WebSocket,
-    token: Optional[str] = Query(None, description="JWT token for authentication")
+    user_id: Optional[int] = Query(None, description="User ID for authentication")
 ):
     """
     WebSocket endpoint для real-time обмена сообщениями.
     
     Протокол:
-    - Подключение: /ws?token=<jwt_token>
+    - Подключение: /ws?user_id=123
     - Отправка сообщения: {"action": "send_message", "chat_id": 1, "text": "Hello"}
     - Редактирование: {"action": "edit_message", "message_id": 1, "text": "New text"}
     - Удаление: {"action": "delete_message", "message_id": 1}
@@ -38,24 +36,16 @@ async def websocket_endpoint(
     - {"type": "error", "message": "..."}
     """
     
-    if not token:
-        await websocket.close(code=4001, reason="token is required")
+    if not user_id:
+        await websocket.close(code=4001, reason="user_id is required")
         return
-    
-    # Validate JWT token and get user
-    db = next(get_db())
-    user = get_current_user_from_token(token, db)
-    
-    if not user:
-        await websocket.close(code=4001, reason="invalid or expired token")
-        return
-    
-    user_id = user.user_id
     
     # Подключаем пользователя
     connected = await websocket_manager.connect(websocket, user_id)
     if not connected:
         return
+    
+    db = next(get_db())
     
     try:
         # Отправляем подтверждение подключения
